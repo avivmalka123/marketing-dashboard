@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Key, Check, Loader2, ExternalLink, AlertTriangle, Database } from 'lucide-react'
+import { Key, Check, Loader2, ExternalLink } from 'lucide-react'
 
 const LS_KEY = 'mkt_dashboard_settings'
 
@@ -120,6 +120,14 @@ export default function SettingsPage() {
     setSaving(key)
     setError(null)
 
+    // 1. Always write to .env.local so server-side routes can read it immediately
+    await fetch('/api/settings/env-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value }),
+    }).catch(() => {/* ignore if fails */})
+
+    // 2. Try to save to DB
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -127,20 +135,16 @@ export default function SettingsPage() {
         body: JSON.stringify({ key, value }),
       })
       const data = await res.json()
-
       if (data.dbConnected === false || !res.ok) {
-        // DB not available — save to localStorage
-        saveLocalSetting(key, value)
-        setLocalKeys(prev => [...new Set([...prev, key])])
         setDbConnected(false)
       }
-    } catch {
-      // Network error — save to localStorage
-      saveLocalSetting(key, value)
-      setLocalKeys(prev => [...new Set([...prev, key])])
-    }
+    } catch { /* DB not available */ }
 
-    // Always update UI as configured
+    // 3. Always save to localStorage as fallback
+    saveLocalSetting(key, value)
+    setLocalKeys(prev => [...new Set([...prev, key])])
+
+    // 4. Update UI
     setConfiguredKeys(prev => [...new Set([...prev, key])])
     setValues(prev => ({ ...prev, [key]: '' }))
     setSaved(key)
@@ -175,29 +179,6 @@ export default function SettingsPage() {
         <p className="text-text2 text-sm mt-1">חבר API keys לפעולה מלאה של הדשבורד</p>
       </div>
 
-      {/* DB status banner */}
-      {!loading && dbConnected === false && (
-        <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/30 rounded-xl">
-          <AlertTriangle size={16} className="text-warning flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-warning">מסד נתונים לא מחובר</p>
-            <p className="text-xs text-text2 mt-0.5 leading-relaxed">
-              ה-API keys נשמרים כרגע <strong className="text-text">רק בדפדפן זה</strong> (localStorage).
-              לשמירה קבועה: צור פרויקט ב-
-              <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline mx-1">Supabase</a>
-              → הוסף DATABASE_URL ל-<code className="text-accent">.env.local</code> → הרץ{' '}
-              <code className="text-accent">npx prisma db push</code>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {dbConnected === true && (
-        <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-xl">
-          <Database size={14} className="text-success" />
-          <p className="text-xs text-success font-semibold">מחובר למסד נתונים — ה-API keys נשמרים בצורה מוצפנת</p>
-        </div>
-      )}
 
       {/* Progress bar */}
       <div className="glass-card p-4">
