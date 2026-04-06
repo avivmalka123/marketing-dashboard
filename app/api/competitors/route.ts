@@ -32,13 +32,6 @@ export async function POST(req: NextRequest) {
 
   const { channelUrl } = await req.json()
 
-  if (!process.env.YOUTUBE_API_KEY) {
-    return NextResponse.json(
-      { error: 'YouTube API Key לא מוגדר. עבור להגדרות.' },
-      { status: 400 }
-    )
-  }
-
   try {
     const channelId = await resolveChannelId(channelUrl)
     const channelInfo = await getChannelInfo(channelId)

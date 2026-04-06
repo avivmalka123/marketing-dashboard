@@ -1,7 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { getApiKey } from './getApiKey'
 
-function getClient() {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+async function getClient() {
+  const apiKey = await getApiKey('ANTHROPIC_API_KEY')
+  if (!apiKey) throw new Error('Anthropic API Key לא מוגדר. עבור להגדרות.')
+  return new Anthropic({ apiKey })
 }
 
 function parseJSON(text: string) {
@@ -16,7 +19,7 @@ export async function analyzeVideoForIsraeliAudience(video: {
   viewCount: number
   viralityScore: number
 }) {
-  const client = getClient()
+  const client = await getClient()
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
@@ -53,7 +56,7 @@ export async function generateDailySuggestion(video: {
   viralityScore: number
   competitorName: string
 }) {
-  const client = getClient()
+  const client = await getClient()
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 3000,
@@ -82,7 +85,7 @@ export async function generateDailySuggestion(video: {
 }
 
 export async function generateSEOBlogPost(topic: string, videoContext?: string) {
-  const client = getClient()
+  const client = await getClient()
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8000,
@@ -120,7 +123,7 @@ export async function generateContentIdeas(
   competitorVideos: Array<{ title: string; viralityScore: number }>,
   count = 8
 ) {
-  const client = getClient()
+  const client = await getClient()
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 3000,
@@ -159,7 +162,7 @@ export async function generateInstagramInsights(stats: {
   avgComments: number
   topPosts: Array<{ caption: string; likes: number }>
 }) {
-  const client = getClient()
+  const client = await getClient()
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1500,

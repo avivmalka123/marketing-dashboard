@@ -1,14 +1,14 @@
 import { google } from 'googleapis'
+import { getApiKey } from './getApiKey'
 
-function getYouTubeClient() {
-  return google.youtube({
-    version: 'v3',
-    auth: process.env.YOUTUBE_API_KEY,
-  })
+async function getYouTubeClient() {
+  const apiKey = await getApiKey('YOUTUBE_API_KEY')
+  if (!apiKey) throw new Error('YouTube API Key לא מוגדר. עבור להגדרות.')
+  return google.youtube({ version: 'v3', auth: apiKey })
 }
 
 export async function resolveChannelId(input: string): Promise<string> {
-  const youtube = getYouTubeClient()
+  const youtube = await getYouTubeClient()
   const idMatch = input.match(/UC[\w-]{22}/)
   if (idMatch) return idMatch[0]
 
@@ -19,11 +19,10 @@ export async function resolveChannelId(input: string): Promise<string> {
       forHandle: handleMatch[1],
     })
     const channel = res.data.items?.[0]
-    if (!channel?.id) throw new Error('Channel not found')
+    if (!channel?.id) throw new Error('ערוץ לא נמצא')
     return channel.id
   }
 
-  // Try as username
   const urlMatch = input.match(/youtube\.com\/(?:c\/|user\/)?([^/\s?]+)/)
   if (urlMatch) {
     const res = await youtube.channels.list({
@@ -34,11 +33,11 @@ export async function resolveChannelId(input: string): Promise<string> {
     if (channel?.id) return channel.id
   }
 
-  throw new Error('Invalid YouTube channel URL or handle')
+  throw new Error('כתובת ערוץ YouTube לא תקינה')
 }
 
 export async function getChannelInfo(channelId: string) {
-  const youtube = getYouTubeClient()
+  const youtube = await getYouTubeClient()
   const res = await youtube.channels.list({
     part: ['snippet', 'statistics', 'brandingSettings'],
     id: [channelId],
@@ -47,7 +46,7 @@ export async function getChannelInfo(channelId: string) {
 }
 
 export async function getChannelVideos(channelId: string, maxResults = 15) {
-  const youtube = getYouTubeClient()
+  const youtube = await getYouTubeClient()
 
   const searchRes = await youtube.search.list({
     part: ['id', 'snippet'],
@@ -72,7 +71,7 @@ export async function getChannelVideos(channelId: string, maxResults = 15) {
 }
 
 export async function getOwnChannelStats(channelId: string) {
-  const youtube = getYouTubeClient()
+  const youtube = await getYouTubeClient()
   const [channelRes, videosRes] = await Promise.all([
     youtube.channels.list({
       part: ['statistics', 'snippet'],

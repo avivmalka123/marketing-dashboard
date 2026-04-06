@@ -1,8 +1,10 @@
+import { getApiKey } from './getApiKey'
+
 const IG_BASE = 'https://graph.facebook.com/v19.0'
 
 async function igFetch(path: string, params: Record<string, string> = {}) {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN
-  if (!token) throw new Error('INSTAGRAM_ACCESS_TOKEN not configured')
+  const token = await getApiKey('INSTAGRAM_ACCESS_TOKEN')
+  if (!token) throw new Error('Instagram Access Token לא מוגדר. עבור להגדרות.')
 
   const url = new URL(`${IG_BASE}/${path}`)
   url.searchParams.set('access_token', token)
