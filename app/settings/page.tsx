@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Key, Check, Loader2, ExternalLink } from 'lucide-react'
+import { Key, Check, Loader2, ExternalLink, AlertTriangle, Database } from 'lucide-react'
+
+const LS_KEY = 'mkt_dashboard_settings'
 
 const KEY_DEFINITIONS = [
   {
@@ -13,7 +15,7 @@ const KEY_DEFINITIONS = [
   {
     key: 'YOUTUBE_CHANNEL_ID',
     label: 'מזהה ערוץ YouTube שלך',
-    description: 'UCxxxxxxxxxx - הערוץ שלך בYouTube',
+    description: 'UCxxxxxxxxxx - הערוץ שלך ב-YouTube',
     required: true,
   },
   {
@@ -58,18 +60,55 @@ const KEY_DEFINITIONS = [
   },
 ]
 
+function loadLocalSettings(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+function saveLocalSetting(key: string, value: string) {
+  const current = loadLocalSettings()
+  current[key] = value
+  localStorage.setItem(LS_KEY, JSON.stringify(current))
+}
+
+function removeLocalSetting(key: string) {
+  const current = loadLocalSettings()
+  delete current[key]
+  localStorage.setItem(LS_KEY, JSON.stringify(current))
+}
+
 export default function SettingsPage() {
   const [configuredKeys, setConfiguredKeys] = useState<string[]>([])
   const [saving, setSaving] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null)
+  const [localKeys, setLocalKeys] = useState<string[]>([])
 
   useEffect(() => {
+    // Load from both DB and localStorage
+    const local = loadLocalSettings()
+    const localKeysList = Object.keys(local)
+    setLocalKeys(localKeysList)
+
     fetch('/api/settings')
       .then(r => r.json())
-      .then((settings: Array<{ key: string }>) => {
-        setConfiguredKeys(settings.map(s => s.key))
+      .then((res: { settings: Array<{ key: string }>; dbConnected: boolean }) => {
+        const dbKeys = (res.settings ?? []).map((s: { key: string }) => s.key)
+        setDbConnected(res.dbConnected ?? false)
+        // Merge DB keys + local keys
+        setConfiguredKeys([...new Set([...dbKeys, ...localKeysList])])
+        setLoading(false)
+      })
+      .catch(() => {
+        // Fallback to localStorage only
+        setDbConnected(false)
+        setConfiguredKeys(localKeysList)
         setLoading(false)
       })
   }, [])
@@ -79,17 +118,55 @@ export default function SettingsPage() {
     if (!value) return
 
     setSaving(key)
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, value }),
-    })
+    setError(null)
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      })
+      const data = await res.json()
+
+      if (data.dbConnected === false || !res.ok) {
+        // DB not available — save to localStorage
+        saveLocalSetting(key, value)
+        setLocalKeys(prev => [...new Set([...prev, key])])
+        setDbConnected(false)
+      }
+    } catch {
+      // Network error — save to localStorage
+      saveLocalSetting(key, value)
+      setLocalKeys(prev => [...new Set([...prev, key])])
+    }
+
+    // Always update UI as configured
     setConfiguredKeys(prev => [...new Set([...prev, key])])
     setValues(prev => ({ ...prev, [key]: '' }))
     setSaved(key)
     setSaving(null)
-    setTimeout(() => setSaved(null), 2000)
+    setTimeout(() => setSaved(null), 2500)
   }
+
+  async function handleDelete(key: string) {
+    // Remove from localStorage
+    removeLocalSetting(key)
+    setLocalKeys(prev => prev.filter(k => k !== key))
+
+    // Try to remove from DB too
+    try {
+      await fetch('/api/settings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      })
+    } catch { /* ignore */ }
+
+    setConfiguredKeys(prev => prev.filter(k => k !== key))
+  }
+
+  const requiredDone = KEY_DEFINITIONS.filter(k => k.required && configuredKeys.includes(k.key)).length
+  const requiredTotal = KEY_DEFINITIONS.filter(k => k.required).length
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -98,11 +175,35 @@ export default function SettingsPage() {
         <p className="text-text2 text-sm mt-1">חבר API keys לפעולה מלאה של הדשבורד</p>
       </div>
 
-      {/* Status bar */}
+      {/* DB status banner */}
+      {!loading && dbConnected === false && (
+        <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/30 rounded-xl">
+          <AlertTriangle size={16} className="text-warning flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-warning">מסד נתונים לא מחובר</p>
+            <p className="text-xs text-text2 mt-0.5 leading-relaxed">
+              ה-API keys נשמרים כרגע <strong className="text-text">רק בדפדפן זה</strong> (localStorage).
+              לשמירה קבועה: צור פרויקט ב-
+              <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline mx-1">Supabase</a>
+              → הוסף DATABASE_URL ל-<code className="text-accent">.env.local</code> → הרץ{' '}
+              <code className="text-accent">npx prisma db push</code>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {dbConnected === true && (
+        <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-xl">
+          <Database size={14} className="text-success" />
+          <p className="text-xs text-success font-semibold">מחובר למסד נתונים — ה-API keys נשמרים בצורה מוצפנת</p>
+        </div>
+      )}
+
+      {/* Progress bar */}
       <div className="glass-card p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-text2">
-            {configuredKeys.length} / {KEY_DEFINITIONS.filter(k => k.required).length} API keys נחוצים מוגדרים
+            {requiredDone} / {requiredTotal} API keys נחוצים מוגדרים
           </span>
           <div className="flex gap-1">
             {KEY_DEFINITIONS.filter(k => k.required).map(k => (
@@ -114,7 +215,19 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
+        <div className="h-1.5 bg-card rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-accent to-accent2 rounded-full transition-all duration-500"
+            style={{ width: `${(requiredDone / requiredTotal) * 100}%` }}
+          />
+        </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl text-sm text-danger">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -124,11 +237,12 @@ export default function SettingsPage() {
         <div className="space-y-3">
           {KEY_DEFINITIONS.map(def => {
             const isConfigured = configuredKeys.includes(def.key)
+            const isLocal = localKeys.includes(def.key)
             const isSaving = saving === def.key
             const isSaved = saved === def.key
 
             return (
-              <div key={def.key} className="glass-card p-5">
+              <div key={def.key} className={`glass-card p-5 transition-all ${isConfigured ? 'border-success/20' : ''}`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-start gap-3">
                     <div
@@ -143,43 +257,57 @@ export default function SettingsPage() {
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-text">{def.label}</span>
                         {def.required && (
                           <span className="text-[10px] text-danger bg-danger/10 px-1.5 py-0.5 rounded">נחוץ</span>
                         )}
-                        {isConfigured && (
-                          <span className="text-[10px] text-success bg-success/10 px-1.5 py-0.5 rounded">✓ מוגדר</span>
+                        {isConfigured && !isLocal && (
+                          <span className="text-[10px] text-success bg-success/10 px-1.5 py-0.5 rounded">✓ DB</span>
+                        )}
+                        {isConfigured && isLocal && (
+                          <span className="text-[10px] text-warning bg-warning/10 px-1.5 py-0.5 rounded">✓ מקומי</span>
                         )}
                       </div>
                       <p className="text-xs text-text2 mt-0.5">{def.description}</p>
                     </div>
                   </div>
-                  {def.link && (
-                    <a
-                      href={def.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-text2 hover:text-accent2 transition-colors flex-shrink-0"
-                    >
-                      <ExternalLink size={13} />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {def.link && (
+                      <a
+                        href={def.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text2 hover:text-accent2 transition-colors"
+                      >
+                        <ExternalLink size={13} />
+                      </a>
+                    )}
+                    {isConfigured && (
+                      <button
+                        onClick={() => handleDelete(def.key)}
+                        className="text-[10px] text-text2 hover:text-danger transition-colors px-2 py-1 rounded-lg hover:bg-danger/10"
+                      >
+                        הסר
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
                   <input
                     type="password"
-                    placeholder={isConfigured ? '••••••••••• (מוגדר)' : `הזן ${def.label}`}
+                    placeholder={isConfigured ? '••••••••••• (מוגדר — הזן ערך חדש לעדכון)' : `הזן ${def.label}`}
                     value={values[def.key] ?? ''}
                     onChange={e => setValues(prev => ({ ...prev, [def.key]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handleSave(def.key)}
                     className="flex-1 bg-bg2 border border-card-border rounded-xl px-3 py-2 text-sm text-text placeholder-text2 focus:outline-none focus:border-accent/60 transition-colors"
                     dir="ltr"
                   />
                   <button
                     onClick={() => handleSave(def.key)}
                     disabled={isSaving || !values[def.key]?.trim()}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 ${
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-40 ${
                       isSaved
                         ? 'bg-success/20 text-success border border-success/30'
                         : 'bg-accent text-white hover:opacity-90'
@@ -188,7 +316,7 @@ export default function SettingsPage() {
                     {isSaving ? (
                       <Loader2 size={14} className="animate-spin" />
                     ) : isSaved ? (
-                      '✓'
+                      '✓ נשמר'
                     ) : isConfigured ? (
                       'עדכן'
                     ) : (
@@ -202,13 +330,20 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Environment variables note */}
+      {/* Env vars tip */}
       <div className="glass-card p-5 border-accent/20">
-        <h3 className="font-bold text-text text-sm mb-2">⚡ טיפ: משתני סביבה</h3>
+        <h3 className="font-bold text-text text-sm mb-2">⚡ חלופה: משתני סביבה</h3>
         <p className="text-xs text-text2 leading-relaxed">
-          בנוסף לשמירה בדאטהבייס, ניתן להגדיר את ה-API keys ב-<code className="text-accent">.env.local</code> לפיתוח
-          מקומי או ב-Vercel Dashboard לפרודקשן. ערכי <code className="text-accent">.env</code> מקבלים עדיפות.
+          ניתן להגדיר את ה-API keys ישירות ב-<code className="text-accent">.env.local</code> לפיתוח מקומי
+          או ב-Vercel Dashboard לפרודקשן. ערכי סביבה מקבלים עדיפות על פני DB.
         </p>
+        <div className="mt-3 p-3 bg-bg2 rounded-lg text-[11px] font-mono text-text2 leading-relaxed" dir="ltr">
+          YOUTUBE_API_KEY=AIza...<br/>
+          YOUTUBE_CHANNEL_ID=UCxxx...<br/>
+          ANTHROPIC_API_KEY=sk-ant-...<br/>
+          INSTAGRAM_ACCESS_TOKEN=EAAx...<br/>
+          DASHBOARD_PASSWORD=yourpassword
+        </div>
       </div>
     </div>
   )
