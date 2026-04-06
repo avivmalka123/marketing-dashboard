@@ -10,9 +10,12 @@ export default async function ContentPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
 
-  const ideas = await prisma.contentIdea.findMany({
-    orderBy: { createdAt: 'desc' },
-  })
+  let ideas: Awaited<ReturnType<typeof prisma.contentIdea.findMany>> = []
+  try {
+    ideas = await prisma.contentIdea.findMany({ orderBy: { createdAt: 'desc' } })
+  } catch {
+    // DB not yet connected — show empty board
+  }
 
   return (
     <div className="space-y-6">

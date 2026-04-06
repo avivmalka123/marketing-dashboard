@@ -7,12 +7,14 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Return only key names, never values
-  const settings = await prisma.setting.findMany({
-    select: { key: true, updatedAt: true },
-  })
-
-  return NextResponse.json(settings)
+  try {
+    const settings = await prisma.setting.findMany({
+      select: { key: true, updatedAt: true },
+    })
+    return NextResponse.json(settings)
+  } catch {
+    return NextResponse.json([])
+  }
 }
 
 export async function POST(req: NextRequest) {

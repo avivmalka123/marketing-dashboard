@@ -17,40 +17,44 @@ function startOfDay(date: Date): Date {
 }
 
 async function getDashboardData() {
-  const [
-    totalCompetitors,
-    totalVideos,
-    totalIdeas,
-    publishedPosts,
-    todaySuggestion,
-    topVideos,
-    recentPosts,
-  ] = await Promise.all([
-    prisma.competitor.count(),
-    prisma.competitorVideo.count(),
-    prisma.contentIdea.count(),
-    prisma.blogPost.count({ where: { status: 'published' } }),
-    prisma.dailySuggestion.findFirst({ where: { date: startOfDay(new Date()) } }),
-    prisma.competitorVideo.findMany({
-      orderBy: { viralityScore: 'desc' },
-      take: 5,
-      include: { competitor: { select: { name: true } } },
-    }),
-    prisma.blogPost.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-      select: { id: true, title: true, status: true, createdAt: true },
-    }),
-  ])
-
-  return {
-    totalCompetitors,
-    totalVideos,
-    totalIdeas,
-    publishedPosts,
-    todaySuggestion,
-    topVideos,
-    recentPosts,
+  const empty = {
+    totalCompetitors: 0,
+    totalVideos: 0,
+    totalIdeas: 0,
+    publishedPosts: 0,
+    todaySuggestion: null,
+    topVideos: [] as { id: string; title: string; viewCount: number; viralityScore: number; competitor: { name: string } }[],
+    recentPosts: [] as { id: string; title: string; status: string; createdAt: Date }[],
+  }
+  try {
+    const [
+      totalCompetitors,
+      totalVideos,
+      totalIdeas,
+      publishedPosts,
+      todaySuggestion,
+      topVideos,
+      recentPosts,
+    ] = await Promise.all([
+      prisma.competitor.count(),
+      prisma.competitorVideo.count(),
+      prisma.contentIdea.count(),
+      prisma.blogPost.count({ where: { status: 'published' } }),
+      prisma.dailySuggestion.findFirst({ where: { date: startOfDay(new Date()) } }),
+      prisma.competitorVideo.findMany({
+        orderBy: { viralityScore: 'desc' },
+        take: 5,
+        include: { competitor: { select: { name: true } } },
+      }),
+      prisma.blogPost.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { id: true, title: true, status: true, createdAt: true },
+      }),
+    ])
+    return { totalCompetitors, totalVideos, totalIdeas, publishedPosts, todaySuggestion, topVideos, recentPosts }
+  } catch {
+    return empty
   }
 }
 

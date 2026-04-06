@@ -8,19 +8,22 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const competitors = await prisma.competitor.findMany({
-    include: {
-      _count: { select: { videos: true } },
-      videos: {
-        orderBy: { viralityScore: 'desc' },
-        take: 3,
-        select: { videoId: true, title: true, viralityScore: true, thumbnailUrl: true },
+  try {
+    const competitors = await prisma.competitor.findMany({
+      include: {
+        _count: { select: { videos: true } },
+        videos: {
+          orderBy: { viralityScore: 'desc' },
+          take: 3,
+          select: { videoId: true, title: true, viralityScore: true, thumbnailUrl: true },
+        },
       },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  return NextResponse.json(competitors)
+      orderBy: { createdAt: 'asc' },
+    })
+    return NextResponse.json(competitors)
+  } catch {
+    return NextResponse.json([])
+  }
 }
 
 export async function POST(req: NextRequest) {

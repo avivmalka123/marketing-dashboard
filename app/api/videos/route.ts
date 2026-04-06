@@ -19,19 +19,22 @@ export async function GET(req: NextRequest) {
     ? (sortBy as OrderByField)
     : 'viralityScore'
 
-  const videos = await prisma.competitorVideo.findMany({
-    where: {
-      ...(competitorId ? { competitorId } : {}),
-      ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
-    },
-    orderBy: { [sort]: 'desc' },
-    take: limit,
-    include: {
-      competitor: {
-        select: { name: true, thumbnailUrl: true, channelId: true },
+  try {
+    const videos = await prisma.competitorVideo.findMany({
+      where: {
+        ...(competitorId ? { competitorId } : {}),
+        ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
       },
-    },
-  })
-
-  return NextResponse.json(videos)
+      orderBy: { [sort]: 'desc' },
+      take: limit,
+      include: {
+        competitor: {
+          select: { name: true, thumbnailUrl: true, channelId: true },
+        },
+      },
+    })
+    return NextResponse.json(videos)
+  } catch {
+    return NextResponse.json([])
+  }
 }

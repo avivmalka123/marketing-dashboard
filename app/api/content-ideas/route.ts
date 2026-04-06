@@ -8,14 +8,17 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const ideas = await prisma.contentIdea.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      sourceVideo: { select: { title: true, viralityScore: true } },
-    },
-  })
-
-  return NextResponse.json(ideas)
+  try {
+    const ideas = await prisma.contentIdea.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        sourceVideo: { select: { title: true, viralityScore: true } },
+      },
+    })
+    return NextResponse.json(ideas)
+  } catch {
+    return NextResponse.json([])
+  }
 }
 
 export async function POST(req: NextRequest) {
