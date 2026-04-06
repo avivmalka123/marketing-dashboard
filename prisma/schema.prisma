@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Competitor {
+  id              String   @id @default(cuid())
+  name            String
+  channelId       String   @unique
+  channelUrl      String
+  handle          String?
+  thumbnailUrl    String?
+  subscriberCount Int?
+  avgViews        Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  videos          CompetitorVideo[]
+}
+
+model CompetitorVideo {
+  id            String   @id @default(cuid())
+  competitorId  String
+  competitor    Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  videoId       String   @unique
+  title         String
+  description   String?  @db.Text
+  thumbnailUrl  String?
+  viewCount     Int      @default(0)
+  likeCount     Int      @default(0)
+  commentCount  Int      @default(0)
+  tags          String[] @default([])
+  publishedAt   DateTime
+  viralityScore Float    @default(0)
+  trendScore    Float    @default(0)
+  growthRate    Float    @default(0)
+  lastUpdated   DateTime @default(now())
+  statsHistory  VideoStatsHistory[]
+  contentIdeas  ContentIdea[]
+}
+
+model VideoStatsHistory {
+  id           String   @id @default(cuid())
+  videoId      String
+  video        CompetitorVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  viewCount    Int
+  likeCount    Int
+  commentCount Int
+  timestamp    DateTime @default(now())
+
+  @@index([videoId, timestamp])
+}
+
+model ContentIdea {
+  id             String   @id @default(cuid())
+  title          String
+  format         String   @default("video")
+  targetAudience String?
+  keywords       String[] @default([])
+  seoScore       Int      @default(0)
+  status         String   @default("Ideas")
+  sourceVideoId  String?
+  sourceVideo    CompetitorVideo? @relation(fields: [sourceVideoId], references: [id])
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model BlogPost {
+  id              String    @id @default(cuid())
+  title           String
+  content         String    @db.Text
+  metaDescription String?
+  slug            String?
+  imageUrl        String?
+  kajabiPostId    String?
+  status          String    @default("draft")
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model DailySuggestion {
+  id            String   @id @default(cuid())
+  videoId       String
+  reason        String   @db.Text
+  hebrewTitles  String[] @default([])
+  contentBrief  String?  @db.Text
+  trendAnalysis String?  @db.Text
+  date          DateTime @unique
+}
