@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getInstagramProfile, getInstagramMedia } from '@/lib/instagram'
 import { generateInstagramInsights } from '@/lib/claude'
+import { getApiKey } from '@/lib/getApiKey'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -8,7 +9,11 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!process.env.INSTAGRAM_ACCESS_TOKEN || !process.env.INSTAGRAM_USER_ID) {
+  const [token, userId] = await Promise.all([
+    getApiKey('INSTAGRAM_ACCESS_TOKEN'),
+    getApiKey('INSTAGRAM_USER_ID'),
+  ])
+  if (!token || !userId) {
     return NextResponse.json(
       { error: 'Instagram API לא מוגדר. הגדר INSTAGRAM_ACCESS_TOKEN ו-INSTAGRAM_USER_ID.' },
       { status: 400 }
