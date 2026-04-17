@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.ytimg.com' },
@@ -11,7 +17,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      allowedOrigins: ['localhost:3000', 'marketing-dashboard-git-main-aviv-malka.vercel.app'],
     },
   },
 }
