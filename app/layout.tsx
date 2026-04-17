@@ -5,7 +5,6 @@ import { authOptions } from '@/lib/auth'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import SessionProviderWrapper from '@/components/layout/SessionProviderWrapper'
-import type { Session } from 'next-auth'
 
 export const metadata: Metadata = {
   title: 'Marketing Dashboard | ניהול שיווק אורגני',

@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { formatNumber, timeAgo } from '@/lib/utils'
-import { TrendingUp, Eye, ThumbsUp } from 'lucide-react'
+import { TrendingUp, Eye, ThumbsUp, ExternalLink, Flame } from 'lucide-react'
 import type { VideoWithCompetitor } from '@/types'
 
 interface Props {
@@ -11,8 +11,8 @@ interface Props {
 function ViralityBadge({ score }: { score: number }) {
   if (score >= 5)
     return (
-      <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/20 text-success font-bold border border-success/30">
-        🔥 ויראלי
+      <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/20 text-success font-bold border border-success/30 flex items-center gap-0.5">
+        <Flame size={8} /> ויראלי
       </span>
     )
   if (score >= 2)
@@ -29,10 +29,12 @@ function ViralityBadge({ score }: { score: number }) {
 }
 
 export default function VideoCard({ video, onClick }: Props) {
+  const ytUrl = `https://www.youtube.com/watch?v=${video.videoId}`
+
   return (
     <div
       onClick={onClick}
-      className="glass-card cursor-pointer overflow-hidden transition-all duration-300 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+      className="glass-card cursor-pointer overflow-hidden transition-all duration-300 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] group"
     >
       {/* Thumbnail */}
       <div className="relative aspect-video bg-bg2 overflow-hidden">
@@ -42,19 +44,36 @@ export default function VideoCard({ video, onClick }: Props) {
             alt={video.title}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-4xl">▶️</div>
         )}
+
+        {/* Virality badge top-right */}
         <div className="absolute top-2 right-2">
           <ViralityBadge score={video.viralityScore} />
         </div>
+
+        {/* Growth badge */}
         {video.growthRate > 20 && (
           <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-success/20 border border-success/30 rounded-full px-2 py-0.5">
             <TrendingUp size={10} className="text-success" />
             <span className="text-[10px] text-success font-bold">+{video.growthRate.toFixed(0)}%</span>
           </div>
         )}
+
+        {/* YouTube link overlay */}
+        <a
+          href={ytUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="absolute top-2 left-2 w-7 h-7 rounded-lg bg-black/70 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+          title="פתח ביוטיוב"
+        >
+          <ExternalLink size={12} />
+        </a>
       </div>
 
       {/* Content */}
@@ -63,7 +82,7 @@ export default function VideoCard({ video, onClick }: Props) {
           {video.title}
         </p>
 
-        {/* Channel + date */}
+        {/* Channel + date + YouTube link */}
         <div className="flex items-center justify-between text-xs text-text2 mb-3">
           <div className="flex items-center gap-1.5">
             {video.competitor.thumbnailUrl ? (
@@ -79,7 +98,19 @@ export default function VideoCard({ video, onClick }: Props) {
             )}
             <span className="truncate max-w-[100px]">{video.competitor.name}</span>
           </div>
-          <span>{timeAgo(video.publishedAt)}</span>
+          <div className="flex items-center gap-2">
+            <span>{timeAgo(video.publishedAt)}</span>
+            <a
+              href={ytUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-text2/50 hover:text-red-500 transition-colors"
+              title="פתח ביוטיוב"
+            >
+              <ExternalLink size={11} />
+            </a>
+          </div>
         </div>
 
         {/* Stats */}

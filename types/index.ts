@@ -24,15 +24,18 @@ export interface CompetitorWithVideos {
   name: string
   channelId: string
   channelUrl: string
+  handle?: string | null
   thumbnailUrl: string | null
   subscriberCount: number | null
   avgViews: number | null
-  _count: { videos: number }
+  _count?: { videos: number }
   videos: Array<{
     videoId: string
     title: string
     viralityScore: number
     thumbnailUrl: string | null
+    viewCount?: number
+    publishedAt?: string | Date
   }>
 }
 

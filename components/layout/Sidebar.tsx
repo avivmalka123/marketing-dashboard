@@ -3,27 +3,23 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Users,
-  Video,
   Lightbulb,
   FileText,
-  BarChart2,
-  Camera,
   Settings,
   LogOut,
   TrendingUp,
+  PlayCircle,
+  Camera,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
 const nav = [
-  { href: '/', label: 'דשבורד', icon: LayoutDashboard },
-  { href: '/competitors', label: 'מתחרים', icon: Users },
-  { href: '/videos', label: 'סרטונים', icon: Video },
-  { href: '/content', label: 'רעיונות תוכן', icon: Lightbulb },
-  { href: '/blog', label: 'בלוג SEO', icon: FileText },
-  { href: '/analytics/youtube', label: 'YouTube Analytics', icon: BarChart2 },
-  { href: '/analytics/instagram', label: 'Instagram Analytics', icon: Camera },
-  { href: '/settings', label: 'הגדרות', icon: Settings },
+  { href: '/',          label: 'דשבורד',        icon: LayoutDashboard, exact: true  },
+  { href: '/youtube',   label: 'YouTube',         icon: PlayCircle,      exact: false },
+  { href: '/instagram', label: 'Instagram',        icon: Camera,          exact: false },
+  { href: '/content',   label: 'רעיונות תוכן',   icon: Lightbulb,       exact: false },
+  { href: '/blog',      label: 'בלוג SEO',        icon: FileText,        exact: false },
+  { href: '/settings',  label: 'הגדרות',          icon: Settings,        exact: false },
 ]
 
 export default function Sidebar() {
@@ -46,24 +42,38 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active =
-            href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(href)
+        {nav.map(({ href, label, icon: Icon, exact }) => {
+          const active = exact ? pathname === href : pathname.startsWith(href)
+
+          // YouTube: red accent, Instagram: pink gradient
+          const accentClass =
+            href === '/youtube'   ? 'bg-red-600/20 text-text border border-red-600/30 shadow-[0_2px_12px_rgba(220,38,38,0.15)]' :
+            href === '/instagram' ? 'bg-pink-600/20 text-text border border-pink-600/30 shadow-[0_2px_12px_rgba(236,72,153,0.15)]' :
+            'bg-accent/20 text-text border border-accent/30 shadow-[0_2px_12px_rgba(124,58,237,0.15)]'
+
+          const iconAccent =
+            href === '/youtube'   ? 'text-red-500' :
+            href === '/instagram' ? 'text-pink-500' :
+            'text-accent'
 
           return (
             <Link
               key={href}
               href={href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                active
-                  ? 'bg-accent/20 text-text border border-accent/30 shadow-[0_2px_12px_rgba(124,58,237,0.15)]'
-                  : 'text-text2 hover:text-text hover:bg-card'
+                active ? accentClass : 'text-text2 hover:text-text hover:bg-card'
               }`}
             >
-              <Icon size={17} className={active ? 'text-accent' : ''} />
+              <Icon size={17} className={active ? iconAccent : ''} />
               <span>{label}</span>
+
+              {/* Platform badges */}
+              {href === '/youtube' && (
+                <span className="mr-auto text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">YT</span>
+              )}
+              {href === '/instagram' && (
+                <span className="mr-auto text-[10px] font-bold text-pink-400 bg-pink-500/10 px-1.5 py-0.5 rounded">IG</span>
+              )}
             </Link>
           )
         })}

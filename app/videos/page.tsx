@@ -10,6 +10,7 @@ import type { VideoWithCompetitor } from '@/types'
 interface Competitor {
   id: string
   name: string
+  thumbnailUrl?: string | null
 }
 
 interface Filters {
@@ -38,7 +39,7 @@ export default function VideosPage() {
     if (filters.search) params.set('search', filters.search)
 
     const data = await fetch(`/api/videos?${params}`).then(r => r.json())
-    setVideos(data)
+    setVideos(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [filters])
 
@@ -49,7 +50,15 @@ export default function VideosPage() {
   useEffect(() => {
     fetch('/api/competitors')
       .then(r => r.json())
-      .then(data => setCompetitors(data.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))))
+      .then(data =>
+        setCompetitors(
+          data.map((c: { id: string; name: string; thumbnailUrl?: string | null }) => ({
+            id: c.id,
+            name: c.name,
+            thumbnailUrl: c.thumbnailUrl ?? null,
+          }))
+        )
+      )
   }, [])
 
   function handleCreateBlog(title: string, videoId: string) {
@@ -81,10 +90,22 @@ export default function VideosPage() {
           <div className="text-4xl">🎬</div>
           <h3 className="font-bold text-text">אין סרטונים</h3>
           <p className="text-text2 text-sm">
-            {competitors.length === 0
+            {filters.competitorId
+              ? `אין סרטונים למתחרה זה — נסה לסנכרן שוב`
+              : filters.search
+              ? `אין תוצאות לחיפוש "${filters.search}"`
+              : competitors.length === 0
               ? 'הוסף מתחרים קודם כדי לראות סרטונים'
               : 'לחץ "סנכרן עכשיו" בעמוד המתחרים'}
           </p>
+          {(filters.competitorId || filters.search) && (
+            <button
+              onClick={() => setFilters({ sortBy: filters.sortBy, competitorId: '', search: '' })}
+              className="text-xs text-accent hover:underline"
+            >
+              נקה פילטרים
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

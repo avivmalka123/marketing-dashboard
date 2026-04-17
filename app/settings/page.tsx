@@ -87,7 +87,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [dbConnected, setDbConnected] = useState<boolean | null>(null)
+
   const [localKeys, setLocalKeys] = useState<string[]>([])
 
   useEffect(() => {
@@ -100,14 +100,12 @@ export default function SettingsPage() {
       .then(r => r.json())
       .then((res: { settings: Array<{ key: string }>; dbConnected: boolean }) => {
         const dbKeys = (res.settings ?? []).map((s: { key: string }) => s.key)
-        setDbConnected(res.dbConnected ?? false)
         // Merge DB keys + local keys
-        setConfiguredKeys([...new Set([...dbKeys, ...localKeysList])])
+        setConfiguredKeys(Array.from(new Set([...dbKeys, ...localKeysList])))
         setLoading(false)
       })
       .catch(() => {
         // Fallback to localStorage only
-        setDbConnected(false)
         setConfiguredKeys(localKeysList)
         setLoading(false)
       })
@@ -120,14 +118,7 @@ export default function SettingsPage() {
     setSaving(key)
     setError(null)
 
-    // 1. Always write to .env.local so server-side routes can read it immediately
-    await fetch('/api/settings/env-write', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, value }),
-    }).catch(() => {/* ignore if fails */})
-
-    // 2. Try to save to DB
+    // 1. Try to save to DB (also writes to .local-data/settings.json as server-side fallback)
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -135,17 +126,26 @@ export default function SettingsPage() {
         body: JSON.stringify({ key, value }),
       })
       const data = await res.json()
-      if (data.dbConnected === false || !res.ok) {
-        setDbConnected(false)
+      if (data.dbConnected === false) {
+        // Saved to server-side local file — this is fine, getApiKey can read it
       }
-    } catch { /* DB not available */ }
+    } catch { /* network error */ }
 
-    // 3. Always save to localStorage as fallback
+    // 2. Try to also write to .env.local (dev only, best-effort)
+    try {
+      await fetch('/api/settings/env-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      })
+    } catch { /* non-dev or network error — fine, local file is the fallback */ }
+
+    // 3. Always save to localStorage as browser-side indicator
     saveLocalSetting(key, value)
-    setLocalKeys(prev => [...new Set([...prev, key])])
+    setLocalKeys(prev => Array.from(new Set([...prev, key])))
 
     // 4. Update UI
-    setConfiguredKeys(prev => [...new Set([...prev, key])])
+    setConfiguredKeys(prev => Array.from(new Set([...prev, key])))
     setValues(prev => ({ ...prev, [key]: '' }))
     setSaved(key)
     setSaving(null)

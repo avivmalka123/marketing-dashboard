@@ -1,6 +1,7 @@
 'use client'
-import { Sparkles, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, ExternalLink, ChevronDown, ChevronUp, PenLine } from 'lucide-react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface DailySuggestion {
   id: string
@@ -13,6 +14,7 @@ interface DailySuggestion {
 }
 
 export default function DailySuggestionCard({ suggestion }: { suggestion: DailySuggestion }) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
 
@@ -21,6 +23,9 @@ export default function DailySuggestionCard({ suggestion }: { suggestion: DailyS
     setCopied(idx)
     setTimeout(() => setCopied(null), 2000)
   }
+
+  // Use the first Hebrew title as the blog topic
+  const blogTopic = suggestion.hebrewTitles[0] ?? ''
 
   return (
     <div className="glass-card p-6 border-accent/30 relative overflow-hidden">
@@ -72,6 +77,17 @@ export default function DailySuggestionCard({ suggestion }: { suggestion: DailyS
             ))}
           </div>
         </div>
+
+        {/* Create blog post shortcut */}
+        {blogTopic && (
+          <button
+            onClick={() => router.push(`/blog?topic=${encodeURIComponent(blogTopic)}`)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 text-accent text-sm font-bold rounded-xl transition-all mb-4"
+          >
+            <PenLine size={14} />
+            צור מאמר SEO מהצעה זו
+          </button>
+        )}
 
         {/* Expandable details */}
         {(suggestion.contentBrief || suggestion.trendAnalysis) && (

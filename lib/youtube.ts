@@ -1,4 +1,4 @@
-import { google } from 'googleapis'
+import { google, youtube_v3 } from 'googleapis'
 import { getApiKey } from './getApiKey'
 
 async function getYouTubeClient() {
@@ -91,7 +91,7 @@ export async function getOwnChannelStats(channelId: string) {
     .map(i => i.id?.videoId)
     .filter((id): id is string => Boolean(id))
 
-  let topVideos: typeof videosRes.data.items = []
+  let topVideos: youtube_v3.Schema$Video[] = []
   if (topVideoIds.length) {
     const vRes = await youtube.videos.list({
       part: ['snippet', 'statistics'],

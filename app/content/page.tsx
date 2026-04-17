@@ -26,7 +26,10 @@ export default async function ContentPage() {
         </p>
       </div>
 
-      <KanbanBoard initialIdeas={ideas} />
+      <KanbanBoard initialIdeas={ideas.map(i => ({
+        ...i,
+        status: i.status as 'Ideas' | 'In Progress' | 'Published',
+      }))} />
     </div>
   )
 }

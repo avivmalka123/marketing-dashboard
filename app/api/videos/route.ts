@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { videoStore } from '@/lib/localStore'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -8,10 +9,10 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
-  const competitorId = url.searchParams.get('competitorId')
+  const competitorId = url.searchParams.get('competitorId') ?? undefined
   const sortBy = url.searchParams.get('sortBy') ?? 'viralityScore'
   const search = url.searchParams.get('search') ?? ''
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '60'), 200)
+  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200'), 500)
 
   type OrderByField = 'viralityScore' | 'viewCount' | 'publishedAt' | 'trendScore' | 'growthRate'
   const validSort: OrderByField[] = ['viralityScore', 'viewCount', 'publishedAt', 'trendScore', 'growthRate']
@@ -28,13 +29,18 @@ export async function GET(req: NextRequest) {
       orderBy: { [sort]: 'desc' },
       take: limit,
       include: {
-        competitor: {
-          select: { name: true, thumbnailUrl: true, channelId: true },
-        },
+        competitor: { select: { id: true, name: true, thumbnailUrl: true, channelId: true } },
       },
     })
     return NextResponse.json(videos)
   } catch {
-    return NextResponse.json([])
+    // Fallback: local store — pass all params directly (sorting + filtering handled inside)
+    const results = videoStore.findManyWithCompetitor({
+      take: limit,
+      orderBy: sort,
+      competitorId,
+      search: search || undefined,
+    })
+    return NextResponse.json(results)
   }
 }
