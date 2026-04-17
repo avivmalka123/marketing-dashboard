@@ -17,7 +17,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'marketing-dashboard-git-main-aviv-malka.vercel.app'],
+      allowedOrigins: ['localhost:3000', 'localhost:3001', 'marketing-dashboard-git-main-aviv-malka.vercel.app'],
     },
   },
 }
